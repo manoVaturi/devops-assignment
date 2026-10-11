@@ -12,7 +12,8 @@ them to Docker Hub and test them together. Jenkins runs on one EC2 instance.
 | Job 3: run both containers, Nginx exposed on the Jenkins machine only, send a request | `docker-monitor-integration-pipeline`, `jenkins/Jenkinsfile.integration`, `docker-compose.yaml` |
 
 Job 3 is the entry point: it runs jobs 1 and 2 for one commit, then tests the images they pushed.
-A push to `main` triggers `seed`, which recreates the jobs and starts job 3.
+A push to `main` that changes `docker-monitor/` triggers `seed`, which recreates the jobs and
+starts job 3. `jobs.groovy` also creates `weatherapp-image-pipeline` for the second project.
 
 ```
 push to main -> seed -> integration pipeline
@@ -33,7 +34,7 @@ network, because `127.0.0.1` there is the instance itself, where nginx is publis
 
 1. A request to nginx returns 200.
 2. `/containers` lists the nginx container, so the app reaches Docker.
-3. A forged `X-Source-IP: 6.6.6.6` is overwritten: the app log shows the real source IP.
+3. Forged `X-Source-IP` and `X-Forwarded-For` headers are ignored: the app log shows the real source IP.
 4. Nginx is published on `127.0.0.1:8090` only: other addresses of the instance refuse the port.
 
 If all pass, both images are tagged `latest` and the Deploy stage runs the same stack as project
@@ -54,6 +55,8 @@ Compose), an ALB with ACM certificates, Route 53 records for `jenkins.manovaturi
 
 ## Notes
 
+- Behind the ALB the peer nginx sees is the load balancer, so nginx takes the client IP from the
+  last `X-Forwarded-For` entry (the one the ALB adds), and only trusts that header from the VPC.
 - The app never touches the Docker socket: it asks `docker-socket-proxy`, which only allows `GET /containers`.
 - Job 3 tests the images pulled from Docker Hub, not the local cache.
 - Trivy only reports, a new CVE in a base image does not fail the build.

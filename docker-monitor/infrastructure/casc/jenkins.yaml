@@ -47,6 +47,10 @@ jobs:
               credentials('github-token')
             }
             branches('main')
+            extensions {
+              // pushes that only change weatherapp-keda/ don't start the pipeline
+              pathRestriction('docker-monitor/.*', '')
+            }
           }
         }
         triggers {

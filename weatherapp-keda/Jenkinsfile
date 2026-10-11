@@ -1,0 +1,88 @@
+// builds the weather app image and pushes it to Docker Hub (job created by docker-monitor/jenkins/jobs.groovy)
+pipeline {
+    agent {
+        docker {
+            image 'my-jenkins-agent:v1'
+            args '-u root -v /var/run/docker.sock:/var/run/docker.sock -v trivy-cache-weather:/root/.cache/trivy'
+        }
+    }
+
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        DOCKERHUB = credentials('docker-hub-creds')
+        IMAGE     = "${DOCKERHUB_USR}/weatherapp"
+        TAG       = "${env.GIT_COMMIT.take(7)}"
+        APP_DIR   = 'weatherapp-keda/weather-app'
+    }
+
+    stages {
+        stage('Install Dependencies') {
+            steps {
+                dir(env.APP_DIR) {
+                    sh 'pip install -r requirements.txt -r requirements-test.txt'
+                }
+            }
+        }
+
+        stage('Checks') {
+            parallel {
+                stage('Lint') {
+                    steps {
+                        dir(env.APP_DIR) {
+                            sh 'flake8 app tests'
+                        }
+                    }
+                }
+                stage('Unit Tests') {
+                    steps {
+                        dir(env.APP_DIR) {
+                            sh 'python -m pytest tests -v --junitxml=report.xml'
+                        }
+                    }
+                    post {
+                        always {
+                            junit "${env.APP_DIR}/report.xml"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Hub Login') {
+            steps {
+                sh 'echo "$DOCKERHUB_PSW" | docker login -u "$DOCKERHUB_USR" --password-stdin'
+            }
+        }
+
+        stage('Build Image') {
+            steps {
+                sh 'docker build --pull -t $IMAGE:$TAG $APP_DIR'
+            }
+        }
+
+        stage('Image Scan (report only)') {
+            steps {
+                sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL --ignore-unfixed $IMAGE:$TAG'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                sh 'docker push $IMAGE:$TAG'
+                echo "Pushed ${env.IMAGE}:${env.TAG}. To roll it out set newTag: \"${env.TAG}\" in weatherapp-keda/k8s/kustomization.yaml"
+            }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker rmi $IMAGE:$TAG || true'
+            sh 'docker logout || true'
+            cleanWs()
+        }
+    }
+}
