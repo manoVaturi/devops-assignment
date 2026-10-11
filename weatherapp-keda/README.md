@@ -9,9 +9,14 @@ The web pods don't call the weather API directly. Every forecast request is publ
 RabbitMQ queue and the web pod waits for the answer. Worker pods take requests from the queue,
 call WeatherAPI and send the result back (`reply_to` + `correlation_id`).
 
-KEDA watches the queue length and scales the workers: 0 when nobody is using the app, one
-worker for every 3 waiting requests, up to 5. Workers go back to 0 about 30 seconds after the
-queue is empty.
+KEDA scales both tiers:
+
+- workers on the queue length: 0 when nobody is using the app, one worker for every 3 waiting
+  requests, up to 5. They go back to 0 about 30 seconds after the queue is empty.
+- web pods on CPU (metrics-server): 2 to 4.
+
+Each web thread keeps one RabbitMQ connection and reuses it, with its own reply queue. If the
+broker drops an idle connection, the next request reconnects and retries once.
 
 ```
 browser -> web (Flask) -> RabbitMQ queue -> worker -> WeatherAPI
@@ -26,15 +31,22 @@ browser -> web (Flask) -> RabbitMQ queue -> worker -> WeatherAPI
 - RabbitMQ 4.3 as the queue
 - KEDA 2.21 (installed with Helm) with a RabbitMQ trigger
 - Kubernetes manifests with kustomize
-- Flask + gunicorn, one Docker image for both web and worker (`ormano/weatherapp`)
+- Flask + gunicorn, one Docker image for both web and worker (`ormano/weatherapp`), unit tests with pytest
+- Jenkins job (`weatherapp-image-pipeline`) that lints, tests, builds, scans and pushes the image
 - Route 53 record for weatherapp.manovaturi.com
 
-The same manifests also run on a local kind cluster.
+The same manifests also run on a local kind cluster (with metrics-server installed).
+
+Secrets are not in the repo. The `weather` namespace needs three of them:
+`weather-api-secret` (WeatherAPI key), `rabbitmq-credentials` (user, password and AMQP URL, used
+by the app and by KEDA) and `rabbitmq-definitions` (`definitions.json` that RabbitMQ loads at
+startup to create the user and the queue).
 
 ## Layout
 
 ```
-weather-app/      Flask web app, queue client and worker, Dockerfile
+weather-app/      Flask web app, queue client and worker, tests, Dockerfile
+Jenkinsfile       image pipeline
 k8s/              RabbitMQ, web app, worker, KEDA TriggerAuthentication + ScaledObject
 infrastructure/   Terraform: VPC, EKS cluster, node group, add-ons
 dns/              Terraform: Route 53 record for the load balancer
@@ -48,12 +60,22 @@ dns/              Terraform: Route 53 record for the load balancer
   RabbitMQ now creates the queue at startup from a definitions file.
 - The AWS load balancer wasn't created because two security groups had the cluster tag.
   Removing the tag from the node security group fixed it.
-- The worker Deployment has no `replicas` field, so `kubectl apply` doesn't fight with KEDA.
+- The Deployments have no `replicas` field, so `kubectl apply` doesn't fight with KEDA.
+- The web pod used to open a new RabbitMQ connection for every request. Under the load test that
+  was a lot of connection churn, so each thread now keeps its connection.
+
+## Trade-offs
+
+- Scaling workers to 0 means the first request after an idle period waits for a worker pod to
+  start (a few seconds, the web pod waits up to 45). `minReplicaCount: 1` removes that for the
+  cost of one idle pod.
+- The Kubernetes API endpoint is public, limited by `api_allowed_cidrs` in Terraform (open by
+  default so the demo works from any network).
 
 ## What I'd change for production
 
 - RabbitMQ as a cluster with persistent storage, or Amazon MQ
-- Autoscaling for the web tier too, and Karpenter for the nodes
+- Karpenter for the nodes
 - HTTPS through an ALB with an ACM certificate
 - Secrets from AWS Secrets Manager
-- A CI/CD pipeline that builds the image and updates the tag
+- GitOps (Argo CD) to roll out the new image tag instead of editing `kustomization.yaml`

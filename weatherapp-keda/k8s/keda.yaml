@@ -30,3 +30,20 @@ spec:
         value: "3"
       authenticationRef:
         name: rabbitmq-auth
+---
+# web pods: 2-4, scaled on CPU (needs metrics-server)
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: weatherapp-scaler
+spec:
+  scaleTargetRef:
+    name: weatherapp
+  minReplicaCount: 2
+  maxReplicaCount: 4
+  cooldownPeriod: 60
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "60"

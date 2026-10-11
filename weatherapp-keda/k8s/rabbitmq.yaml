@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: rabbitmq
-          image: rabbitmq:4.3-management
+          image: rabbitmq:4.3.6-management
           ports:
             - name: amqp
               containerPort: 5672

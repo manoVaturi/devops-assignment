@@ -1,3 +1,4 @@
+# no replicas here - KEDA scales the web pods on CPU
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,7 +6,6 @@ metadata:
   labels:
     app: weatherapp
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: weatherapp
@@ -29,6 +29,13 @@ spec:
             httpGet:
               path: /health
               port: 5000
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
           resources:
             requests:
               cpu: 100m

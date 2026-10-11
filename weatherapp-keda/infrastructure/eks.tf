@@ -8,7 +8,8 @@ module "eks" {
   vpc_id     = module.vpc.vpc_id
   subnet_ids = module.vpc.private_subnets
 
-  endpoint_public_access = true
+  endpoint_public_access       = true
+  endpoint_public_access_cidrs = var.api_allowed_cidrs
 
   # whoever runs terraform gets admin on the cluster
   enable_cluster_creator_admin_permissions = true
@@ -70,6 +71,14 @@ resource "aws_eks_addon" "kube_proxy" {
 resource "aws_eks_addon" "coredns" {
   cluster_name = module.eks.cluster_name
   addon_name   = "coredns"
+
+  depends_on = [module.eks_managed_node_group]
+}
+
+# CPU metrics for the web ScaledObject
+resource "aws_eks_addon" "metrics_server" {
+  cluster_name = module.eks.cluster_name
+  addon_name   = "metrics-server"
 
   depends_on = [module.eks_managed_node_group]
 }
