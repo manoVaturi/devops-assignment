@@ -1,0 +1,32 @@
+# rabbitmq url (with password) comes from the secret
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-auth
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: rabbitmq-credentials
+      key: url
+---
+# 1 worker per 3 messages in the queue, 0-5 workers
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: weather-worker-scaler
+spec:
+  scaleTargetRef:
+    name: weather-worker
+  minReplicaCount: 0
+  maxReplicaCount: 5
+  pollingInterval: 5
+  cooldownPeriod: 30
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: weather_requests_queue
+        mode: QueueLength
+        value: "3"
+      authenticationRef:
+        name: rabbitmq-auth

@@ -1,0 +1,17 @@
+# kubectl apply -k k8s
+# secrets (weather api key, rabbitmq credentials and definitions) are created outside the repo
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: weather
+
+resources:
+  - namespace.yaml
+  - rabbitmq.yaml
+  - weatherapp.yaml
+  - worker.yaml
+  - keda.yaml
+
+images:
+  - name: ormano/weatherapp
+    newTag: "1.0.2"

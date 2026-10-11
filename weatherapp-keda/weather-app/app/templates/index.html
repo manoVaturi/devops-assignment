@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en" class="h-100">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>MyWeather - Your Personal Broadcaster</title>
+        <meta
+            name="description"
+            content="Fast, clean 7-day weather forecasts for any city."
+        />
+        <link
+            rel="icon"
+            href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>%E2%9B%85</text></svg>"
+        />
+        <script>
+            // Set the theme before first paint so there's no flash of the wrong theme.
+            document.documentElement.setAttribute(
+                "data-bs-theme",
+                window.matchMedia("(prefers-color-scheme: dark)").matches
+                    ? "dark"
+                    : "light",
+            );
+        </script>
+        <link
+            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css"
+            rel="stylesheet"
+            crossorigin="anonymous"
+        />
+        <link
+            href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+            rel="stylesheet"
+        />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+            rel="stylesheet"
+        />
+        <link
+            rel="stylesheet"
+            href="{{ url_for('static', filename='css/style.css') }}"
+        />
+    </head>
+    <body class="h-100 d-flex flex-column">
+        <nav class="navbar navbar-dark bg-dark shadow-sm">
+            <div class="px-5 d-flex justify-content-between w-100">
+                <span class="navbar-brand fw-bold">
+                    <i class="fa-solid fa-cloud-sun me-2"></i>MyWeather
+                </span>
+            </div>
+        </nav>
+
+        <main
+            class="d-flex flex-column container justify-content-top align-items-center flex-grow-1 py-5"
+        >
+            <h2 class="mb-4 fw-bold text-body-emphasis">Find your forecast</h2>
+
+            <form
+                id="searchForm"
+                novalidate
+                autocomplete="off"
+                class="w-100"
+                style="max-width: 600px"
+            >
+                <div class="input-group has-validation shadow-sm rounded">
+                    <input
+                        type="text"
+                        id="cityInput"
+                        name="city"
+                        placeholder="Type a city (e.g. London, GB)..."
+                        list="suggestionList"
+                        autocomplete="off"
+                        class="form-control border-start-0"
+                        required
+                    />
+                    <button
+                        type="button"
+                        id="locateBtn"
+                        class="btn btn-outline-secondary locate-btn"
+                        title="Use current location"
+                        aria-label="Use current location"
+                    >
+                        <i class="fa-solid fa-location-crosshairs"></i>
+                    </button>
+                    <button class="btn btn-primary px-4" type="submit">
+                        Search
+                    </button>
+                    <div class="invalid-feedback mt-2">
+                        Please select a valid city from the dropdown list.
+                    </div>
+                </div>
+            </form>
+            <p id="statusBar" class="text-muted small mt-3" aria-live="polite"></p>
+
+            <div id="resultContainer" class="w-100 mt-4"></div>
+
+            <datalist id="suggestionList"></datalist>
+        </main>
+
+        <template id="weatherTemplate">
+            <div class="weather-result w-100">
+                <div
+                    class="card weather-card w-100 mx-auto text-center mb-4"
+                    style="max-width: 600px"
+                >
+                    <div class="card-body py-4">
+                        <h3 class="fw-bold mb-0 js-city-name"></h3>
+                        <p
+                            class="text-muted text-uppercase small fw-bold section-label mt-2 mb-3"
+                        >
+                            Today
+                        </p>
+
+                        <img
+                            class="weather-icon-large d-none js-today-icon"
+                            alt="Current conditions"
+                        />
+
+                        <div class="mb-3 mt-2">
+                            <span
+                                class="display-4 temp-display text-body-emphasis js-today-max"
+                            ></span>
+                            <span
+                                class="fs-4 text-muted ms-1 forecast-temp js-today-min"
+                            ></span>
+                        </div>
+                        <div
+                            class="text-secondary d-flex align-items-center justify-content-center gap-2"
+                        >
+                            <i class="fa-solid fa-droplet text-info"></i>
+                            <span class="fw-medium js-today-humidity"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <h5 class="fw-bold mb-3 text-center text-muted">
+                    Upcoming Forecast
+                </h5>
+                <div
+                    class="row row-cols-2 row-cols-md-3 row-cols-lg-6 g-3 justify-content-center js-upcoming"
+                ></div>
+            </div>
+        </template>
+
+        <template id="skeletonTemplate">
+            <div class="w-100 d-flex flex-column align-items-center">
+                <div
+                    class="card weather-card w-100 mx-auto mb-4"
+                    style="max-width: 600px"
+                >
+                    <div class="card-body py-4 text-center">
+                        <div
+                            class="skeleton mx-auto mb-3"
+                            style="width: 140px; height: 20px"
+                        ></div>
+                        <div
+                            class="skeleton mx-auto mb-3"
+                            style="width: 84px; height: 84px; border-radius: 50%"
+                        ></div>
+                        <div
+                            class="skeleton mx-auto"
+                            style="width: 110px; height: 40px"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+        </template>
+
+        <script
+            src="{{ url_for('static', filename='js/app.js') }}"
+            defer
+        ></script>
+    </body>
+</html>
