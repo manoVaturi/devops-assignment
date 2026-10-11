@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+Dockerfile
+docker-compose.yaml
+.dockerignore
+**/.pytest_cache
+.vscode
+.idea

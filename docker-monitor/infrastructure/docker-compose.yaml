@@ -1,0 +1,37 @@
+services:
+  jenkins:
+    build: .
+    image: jenkins-master:custom
+    container_name: jenkins-master
+    user: root   # docker socket
+    env_file:
+      - path: .env   # optional, no secrets
+        required: false
+    environment:
+      # heap cap leaves room for builds
+      JAVA_OPTS: "-Djenkins.install.runSetupWizard=false -Xmx${JENKINS_HEAP:-1g}"
+    ports:
+      # EC2 sets 0.0.0.0, the security group allows the ALB only
+      - "${JENKINS_BIND_ADDR:-127.0.0.1}:8080:8080"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - ./casc/jenkins.yaml:/var/jenkins_conf/jenkins.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      agent-image:
+        condition: service_completed_successfully
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    restart: unless-stopped
+
+  # builds the agent image and exits
+  agent-image:
+    build: ./agent
+    image: my-jenkins-agent:v1
+    command: ["true"]
+    restart: "no"
+
+volumes:
+  jenkins_data:
+    name: jenkins_jenkins_data

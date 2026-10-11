@@ -1,0 +1,41 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/compose-spec/compose-spec/main/schema/compose-spec.json
+services:
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0
+    environment:
+      CONTAINERS: "1"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - internal
+    mem_limit: 64m
+    restart: unless-stopped
+
+  docker-monitor:
+    image: ${APP_IMAGE:?APP_IMAGE is required}:${TAG:?TAG is required}
+    environment:
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
+    depends_on:
+      - docker-socket-proxy
+    networks:
+      - default
+      - internal
+    mem_limit: 256m
+    cpus: 0.5
+    restart: unless-stopped
+
+  nginx:
+    image: ${NGINX_IMAGE:?NGINX_IMAGE is required}:${TAG:?TAG is required}
+    ports:
+      # loopback by default; the deploy sets NGINX_BIND_ADDR=0.0.0.0 for the load balancer
+      - "${NGINX_BIND_ADDR:-127.0.0.1}:${NGINX_HOST_PORT:-8090}:80"
+    depends_on:
+      docker-monitor:
+        condition: service_healthy   # nginx needs the app up first
+    mem_limit: 64m
+    cpus: 0.25
+    restart: unless-stopped
+
+networks:
+  internal:
+    internal: true

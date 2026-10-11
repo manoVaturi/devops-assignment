@@ -1,0 +1,28 @@
+#!/bin/bash
+exec > >(tee -a /var/log/bootstrap.log) 2>&1
+set -eu
+
+systemctl enable --now docker
+
+# wait until the secrets are filled in
+get() { aws secretsmanager get-secret-value --region ${region} --secret-id "$1" --query SecretString --output text 2>/dev/null; }
+GH_TOKEN=""
+for i in $(seq 1 360); do
+  GH_USER=$(get jenkins-github-user) && GH_TOKEN=$(get jenkins-github-token) && break
+  sleep 10
+done
+[ -n "$GH_TOKEN" ] || { echo "secrets are empty"; exit 1; }
+
+AUTH=$(printf '%s:%s' "$GH_USER" "$GH_TOKEN" | base64 -w0)
+git -c http.extraHeader="Authorization: Basic $AUTH" clone --branch main ${repo_url} /opt/assignment
+
+cd /opt/assignment/docker-monitor/infrastructure
+cat > .env <<ENV
+GIT_REPO_URL=${repo_url}
+JENKINS_URL=https://${hostname}/
+JENKINS_BIND_ADDR=0.0.0.0
+JENKINS_HEAP=2g
+AWS_REGION=${region}
+ENV
+
+docker compose up -d --build

@@ -1,0 +1,80 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Live Docker Monitor</title>
+    <style>
+      body {
+        font-family: monospace;
+        background: #121212;
+        color: #00ff00;
+        padding: 20px;
+      }
+      h1 {
+        color: #fff;
+      }
+      .container-box {
+        background: #1e1e1e;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border-left: 5px solid #00ff00;
+      }
+      .status-running {
+        color: #00ff00;
+      }
+      .status-other {
+        color: #ff0000;
+      }
+      .error {
+        color: #ff3333;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Live Docker Containers</h1>
+    <div id="monitor">Loading...</div>
+
+    <script>
+      const POLL_MS = 2000;
+      const monitor = document.getElementById("monitor");
+
+      const show = (text, cls = "") => {
+        const p = document.createElement("p");
+        p.className = cls;
+        p.textContent = text;
+        monitor.replaceChildren(p);
+      };
+
+      const render = (containers) =>
+        monitor.replaceChildren(
+          ...containers.map((c) => {
+            const box = document.createElement("div");
+            box.className = "container-box";
+            const status = document.createElement("span");
+            status.className =
+              c.status === "running" ? "status-running" : "status-other";
+            status.textContent = c.status;
+            box.append(`Name: ${c.name}`, document.createElement("br"));
+            box.append(`ID: ${c.id}`, document.createElement("br"));
+            box.append("Status: ", status);
+            return box;
+          }),
+        );
+
+      async function refresh() {
+        try {
+          const data = await (await fetch("/containers")).json();
+          if (data.error) show(data.error, "error");
+          else if (!data.containers.length) show("No containers running.");
+          else render(data.containers);
+        } catch {
+          show("Lost connection to server.", "error");
+        }
+        setTimeout(refresh, POLL_MS);
+      }
+
+      refresh();
+    </script>
+  </body>
+</html>

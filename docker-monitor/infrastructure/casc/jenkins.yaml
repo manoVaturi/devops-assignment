@@ -1,0 +1,61 @@
+# secrets: AWS Secrets Manager (jenkins-* secrets)
+jenkins:
+  systemMessage: "Configured by Configuration as Code"
+  securityRealm:
+    local:
+      allowsSignup: false
+      users:
+        - id: ${jenkins-admin-user}
+          password: ${jenkins-admin-password}
+  authorizationStrategy: loggedInUsersCanDoAnything
+
+appearance:
+  themeManager:
+    theme: "dracula"
+
+unclassified:
+  location:
+    url: ${JENKINS_URL:-http://localhost:8080/}
+
+security:
+  globalJobDslSecurityConfiguration:
+    useScriptSecurity: false
+
+credentials:
+  system:
+    domainCredentials:
+      - credentials:
+          - usernamePassword:
+              scope: GLOBAL
+              id: docker-hub-creds
+              username: ${jenkins-dockerhub-user}
+              password: ${jenkins-dockerhub-token}
+          - usernamePassword:
+              scope: GLOBAL
+              id: github-token
+              username: ${jenkins-github-user}
+              password: ${jenkins-github-token}
+
+jobs:
+  - script: |
+      job('seed') {
+        description('Creates/updates all pipeline jobs from docker-monitor/jenkins/jobs.groovy')
+        scm {
+          git {
+            remote {
+              url('${GIT_REPO_URL:-https://github.com/manoVaturi/devops-assignment.git}')
+              credentials('github-token')
+            }
+            branches('main')
+          }
+        }
+        triggers {
+          githubPush()
+        }
+        steps {
+          dsl {
+            external('docker-monitor/jenkins/jobs.groovy')
+            removeAction('DELETE')
+          }
+        }
+      }

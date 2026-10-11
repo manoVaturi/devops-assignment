@@ -1,0 +1,146 @@
+pipeline {
+    agent none
+
+    options {
+        timeout(time: 20, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+
+    environment {
+        MONITOR_JOB = 'docker-monitor-pipeline'
+        NGINX_JOB   = 'docker-monitor-nginx-pipeline'
+    }
+
+    stages {
+        stage('Resolve Commit') {
+            agent any
+            steps {
+                script { env.TAG = env.GIT_COMMIT.take(7) }
+                echo "Integrating commit ${env.TAG}"
+            }
+        }
+
+        stage('Build Images') {
+            steps {
+                script {
+                    def hashParam = [string(name: 'TARGET_HASH', value: env.TAG)]
+                    parallel(
+                        monitor: { build job: env.MONITOR_JOB, parameters: hashParam, wait: true, propagate: true },
+                        nginx:   { build job: env.NGINX_JOB,   parameters: hashParam, wait: true, propagate: true }
+                    )
+                }
+            }
+        }
+
+        stage('Test & Promote') {
+            agent {
+                docker {
+                    image 'my-jenkins-agent:v1'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                }
+            }
+            environment {
+                DOCKERHUB       = credentials('docker-hub-creds')
+                APP_IMAGE       = "${DOCKERHUB_USR}/docker-monitor-app"
+                NGINX_IMAGE     = "${DOCKERHUB_USR}/docker-monitor-nginx"
+                COMPOSE         = 'docker compose -f docker-monitor/docker-compose.yaml -p monitor-ci'
+                NGINX_HOST_PORT = '8090'
+                // throwaway container on the compose network: reaches nginx by name
+                PROBE           = 'docker run --rm --network monitor-ci_default my-jenkins-agent:v1'
+            }
+            stages {
+                stage('Deploy pushed images') {
+                    steps {
+                        sh 'echo "$DOCKERHUB_PSW" | docker login -u "$DOCKERHUB_USR" --password-stdin'
+                        // leftovers from an aborted run
+                        sh "${COMPOSE} down -v || true"
+                        // test the pushed images, not the local cache
+                        sh "${COMPOSE} up -d --pull always"
+                    }
+                }
+
+                stage('Responds 200') {
+                    steps {
+                        sh '$PROBE curl -sf --retry 15 --retry-delay 2 --retry-connrefused -o /dev/null http://nginx/'
+                    }
+                }
+
+                stage('App reaches Docker') {
+                    steps {
+                        // the app lists the nginx container through the socket proxy
+                        sh '$PROBE curl -sf http://nginx/containers | grep -q monitor-ci-nginx'
+                    }
+                }
+
+                stage('X-Source-IP injected') {
+                    steps {
+                        // send a spoofed header with a unique id, then read that request in the app log
+                        sh '''
+                            ID="probe-$BUILD_NUMBER"
+                            $PROBE curl -sf -o /dev/null -H 'X-Source-IP: 6.6.6.6' "http://nginx/?$ID"
+                            sleep 2
+                            LINE=$($COMPOSE logs --no-log-prefix docker-monitor | grep "$ID" || true)
+                            echo "app access log: $LINE"
+                            [ -n "$LINE" ] || { echo "request not found in the app log"; exit 1; }
+                            echo "$LINE" | grep -qE 'src=[0-9]+[.][0-9]+[.][0-9]+[.][0-9]+$' || { echo "no source IP header reached the app"; exit 1; }
+                            echo "$LINE" | grep -q 'src=6.6.6.6' && { echo "the client-supplied X-Source-IP was not overwritten"; exit 1; }
+                            true
+                        '''
+                    }
+                }
+
+                stage('Loopback only') {
+                    steps {
+                        // the only check that needs the host network: a throwaway container with no credentials
+                        sh '''
+                            $COMPOSE port nginx 80 | grep -qxF "127.0.0.1:$NGINX_HOST_PORT"
+                            docker run --rm --network host -e NGINX_HOST_PORT my-jenkins-agent:v1 sh -c '
+                                curl -sf -o /dev/null "http://127.0.0.1:$NGINX_HOST_PORT/" || { echo "published port does not answer"; exit 1; }
+                                TESTED=0
+                                for ip in $(hostname -I); do
+                                    case $ip in 127.*|*:*) continue ;; esac
+                                    TESTED=$((TESTED + 1))
+                                    if curl -s --max-time 3 -o /dev/null "http://$ip:$NGINX_HOST_PORT/"; then
+                                        echo "nginx answers on $ip: it must listen on 127.0.0.1 only"; exit 1
+                                    fi
+                                done
+                                [ "$TESTED" -gt 0 ] || { echo "found no non-loopback IPv4 address to test"; exit 1; }
+                            '
+                        '''
+                    }
+                }
+
+                stage('Promote to latest') {
+                    steps {
+                        sh '''
+                            for image in $APP_IMAGE $NGINX_IMAGE; do
+                                docker tag $image:$TAG $image:latest
+                                docker push $image:latest
+                            done
+                        '''
+                    }
+                }
+
+                stage('Deploy') {
+                    environment {
+                        PROD = 'docker compose -f docker-monitor/docker-compose.yaml -p monitor-prod'
+                    }
+                    steps {
+                        // the verified images, kept running on the Jenkins machine; the load balancer reaches nginx on port 8091
+                        sh 'NGINX_HOST_PORT=8091 NGINX_BIND_ADDR=0.0.0.0 $PROD up -d --pull always'
+                        sh 'docker run --rm --network monitor-prod_default my-jenkins-agent:v1 curl -sf --retry 15 --retry-delay 2 --retry-connrefused -o /dev/null http://nginx/'
+                    }
+                }
+            }
+            post {
+                always {
+                    sh "${COMPOSE} down -v || true"
+                    // not prune: it would delete my-jenkins-agent:v1
+                    sh 'docker rmi $APP_IMAGE:$TAG $APP_IMAGE:latest $NGINX_IMAGE:$TAG $NGINX_IMAGE:latest || true'
+                    sh 'docker logout || true'
+                    cleanWs()
+                }
+            }
+        }
+    }
+}
