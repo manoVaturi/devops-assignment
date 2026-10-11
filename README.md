@@ -15,7 +15,9 @@ Two projects, each in its own folder with its own README.
 | Job 1: pull from GitHub, build the Flask app (lists running containers from the local Docker engine), push to Docker Hub | `docker-monitor/jenkins/Jenkinsfile.monitor`, app in `docker-monitor/monitor/` |
 | Job 2: Nginx image with `proxy_pass` to the app and the source IP injected as a request header, push to Docker Hub | `docker-monitor/jenkins/Jenkinsfile.nginx`, config in `docker-monitor/nginx/` |
 | Job 3: run both containers, Nginx exposed on the Jenkins machine only, send a request and verify it | `docker-monitor/jenkins/Jenkinsfile.integration`, `docker-monitor/docker-compose.yaml` |
-| K8s cluster with my weather app, a 3rd party queue, KEDA scaling the pods by user requests | `weatherapp-keda/` (Terraform EKS, RabbitMQ, KEDA ScaledObject) |
+| K8s cluster with my weather app, a 3rd party queue, KEDA scaling the pods by user requests | `weatherapp-keda/` (Terraform EKS, RabbitMQ, KEDA ScaledObjects) |
+
+Extra: a fourth Jenkins job builds the weather app image.
 
 ## Stack
 
@@ -32,7 +34,8 @@ docker-monitor/
   jenkins/          jobs.groovy + the three Jenkinsfiles
   infrastructure/   Jenkins image, plugins, CasC, Terraform for EC2
 weatherapp-keda/
-  weather-app/      Flask web + queue worker
+  weather-app/      Flask web + queue worker, tests
+  Jenkinsfile       image pipeline
   k8s/              RabbitMQ, app, worker, KEDA ScaledObject (kustomize)
   infrastructure/   Terraform: VPC + EKS
   dns/              Terraform: Route 53 record
