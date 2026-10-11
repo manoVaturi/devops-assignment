@@ -74,10 +74,11 @@ pipeline {
 
                 stage('X-Source-IP injected') {
                     steps {
-                        // send a spoofed header with a unique id, then read that request in the app log
+                        // send spoofed headers with a unique id, then read that request in the app log.
+                        // the probe is not in the trusted VPC range, so X-Forwarded-For must be ignored too
                         sh '''
                             ID="probe-$BUILD_NUMBER"
-                            $PROBE curl -sf -o /dev/null -H 'X-Source-IP: 6.6.6.6' "http://nginx/?$ID"
+                            $PROBE curl -sf -o /dev/null -H 'X-Source-IP: 6.6.6.6' -H 'X-Forwarded-For: 6.6.6.6' "http://nginx/?$ID"
                             sleep 2
                             LINE=$($COMPOSE logs --no-log-prefix docker-monitor | grep "$ID" || true)
                             echo "app access log: $LINE"

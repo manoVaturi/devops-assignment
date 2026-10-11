@@ -1,8 +1,6 @@
-FROM nginx:stable-alpine
+FROM nginx:1.30.5-alpine
 
-RUN apk upgrade --no-cache && \
-    rm -f /etc/nginx/conf.d/default.conf
-
+# replaces the default site
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80

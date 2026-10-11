@@ -2,7 +2,7 @@ FROM docker/buildx-bin:0.17.1 AS buildx
 FROM docker/compose-bin:v2.29.7 AS compose
 FROM aquasec/trivy:0.58.1 AS trivy
 
-FROM python:3.12-slim-trixie
+FROM python:3.12.15-slim-trixie
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
