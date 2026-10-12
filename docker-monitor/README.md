@@ -12,10 +12,9 @@ them to Docker Hub and test them together. Jenkins runs on one EC2 instance.
 | Job 3: run both containers, Nginx exposed on the Jenkins machine only, send a request | `docker-monitor-integration-pipeline`, `jenkins/Jenkinsfile.integration`, `docker-compose.yaml` |
 
 Job 3 is the entry point: it runs jobs 1 and 2 for one commit, then tests the images they pushed.
-A push to `main` that changes `docker-monitor/` triggers `seed`, which recreates the jobs and
-starts job 3.
+A push to `main` triggers `seed`, which recreates the jobs and starts job 3.
 
-```
+```text
 push to main -> seed -> integration pipeline
                           |-> docker-monitor-pipeline        lint, SAST, tests, build, scan, push
                           |-> docker-monitor-nginx-pipeline  build, config test, scan, push
@@ -66,7 +65,7 @@ Compose), an ALB with ACM certificates, Route 53 records for `jenkins.manovaturi
 
 ## Layout
 
-```
+```text
 monitor/                    Flask app, tests, Dockerfile
 nginx/                      Nginx image
 jenkins/                    jobs.groovy and the three Jenkinsfiles

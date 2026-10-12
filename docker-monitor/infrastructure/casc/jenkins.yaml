@@ -47,10 +47,6 @@ jobs:
               credentials('github-token')
             }
             branches('main')
-            extensions {
-              // only changes under docker-monitor/ start the pipeline
-              pathRestriction('docker-monitor/.*', '')
-            }
           }
         }
         triggers {

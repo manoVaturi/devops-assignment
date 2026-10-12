@@ -4,8 +4,8 @@ Two projects, each in its own folder with its own README.
 
 | Part | Folder | Live |
 | --- | --- | --- |
-| Jenkins Job DSL: build a Flask app and an Nginx proxy, push both to Docker Hub, run and verify them | [`docker-monitor/`](docker-monitor/) | https://jenkins.manovaturi.com, https://monitor.manovaturi.com |
-| Weather app on Kubernetes (EKS) with RabbitMQ, scaled by KEDA | [`weatherapp-keda/`](weatherapp-keda/) | http://weatherapp.manovaturi.com |
+| Jenkins Job DSL: build a Flask app and an Nginx proxy, push both to Docker Hub, run and verify them | [`docker-monitor/`](docker-monitor/) | [Jenkins](https://jenkins.manovaturi.com), [Monitor](https://monitor.manovaturi.com) |
+| Weather app on Kubernetes (EKS) with RabbitMQ, scaled by KEDA | [`weatherapp-keda/`](weatherapp-keda/) | [Weather app](http://weatherapp.manovaturi.com) |
 
 ## Assignment items
 
@@ -25,7 +25,7 @@ RabbitMQ, KEDA, Helm.
 
 ## Layout
 
-```
+```text
 docker-monitor/
   monitor/          Flask app that lists the running containers
   nginx/            reverse proxy, adds X-Source-IP

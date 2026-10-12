@@ -18,7 +18,7 @@ KEDA scales both tiers:
 Each web thread keeps one RabbitMQ connection and reuses it, with its own reply queue. If the
 broker drops an idle connection, the next request reconnects and retries once.
 
-```
+```text
 browser -> web (Flask) -> RabbitMQ queue -> worker -> WeatherAPI
                                ^
                                |
@@ -43,7 +43,7 @@ startup to create the user and the queue).
 
 ## Layout
 
-```
+```text
 weather-app/      Flask web app, queue client and worker, tests, Dockerfile
 k8s/              RabbitMQ, web app, worker, KEDA TriggerAuthentication + ScaledObject
 infrastructure/   Terraform: VPC, EKS cluster, node group, add-ons
