@@ -39,10 +39,5 @@ pipelineJob('docker-monitor-integration-pipeline') {
     definition(fromRepo('docker-monitor/jenkins/Jenkinsfile.integration'))
 }
 
-pipelineJob('weatherapp-image-pipeline') {
-    description('Builds the weather app image (weatherapp-keda/) and pushes it to Docker Hub. Started by hand.')
-    definition(fromRepo('weatherapp-keda/Jenkinsfile'))
-}
-
 // seed job runs this file on every push, then the integration pipeline starts
 queue('docker-monitor-integration-pipeline')

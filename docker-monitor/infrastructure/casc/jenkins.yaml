@@ -48,7 +48,7 @@ jobs:
             }
             branches('main')
             extensions {
-              // pushes that only change weatherapp-keda/ don't start the pipeline
+              // only changes under docker-monitor/ start the pipeline
               pathRestriction('docker-monitor/.*', '')
             }
           }

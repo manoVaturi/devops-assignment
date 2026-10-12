@@ -32,7 +32,6 @@ browser -> web (Flask) -> RabbitMQ queue -> worker -> WeatherAPI
 - KEDA 2.21 (installed with Helm) with a RabbitMQ trigger
 - Kubernetes manifests with kustomize
 - Flask + gunicorn, one Docker image for both web and worker (`ormano/weatherapp`), unit tests with pytest
-- Jenkins job (`weatherapp-image-pipeline`) that lints, tests, builds, scans and pushes the image
 - Route 53 record for weatherapp.manovaturi.com
 
 The same manifests also run on a local kind cluster (with metrics-server installed).
@@ -46,7 +45,6 @@ startup to create the user and the queue).
 
 ```
 weather-app/      Flask web app, queue client and worker, tests, Dockerfile
-Jenkinsfile       image pipeline
 k8s/              RabbitMQ, web app, worker, KEDA TriggerAuthentication + ScaledObject
 infrastructure/   Terraform: VPC, EKS cluster, node group, add-ons
 dns/              Terraform: Route 53 record for the load balancer

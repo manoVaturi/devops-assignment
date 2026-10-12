@@ -13,7 +13,7 @@ them to Docker Hub and test them together. Jenkins runs on one EC2 instance.
 
 Job 3 is the entry point: it runs jobs 1 and 2 for one commit, then tests the images they pushed.
 A push to `main` that changes `docker-monitor/` triggers `seed`, which recreates the jobs and
-starts job 3. `jobs.groovy` also creates `weatherapp-image-pipeline` for the second project.
+starts job 3.
 
 ```
 push to main -> seed -> integration pipeline
@@ -38,7 +38,7 @@ network, because `127.0.0.1` there is the instance itself, where nginx is publis
 4. Nginx is published on `127.0.0.1:8090` only: other addresses of the instance refuse the port.
 
 If all pass, both images are tagged `latest` and the Deploy stage runs the same stack as project
-`monitor-prod` on the Jenkins machine, reachable at https://monitor.manovaturi.com.
+`monitor-prod` on the Jenkins machine, reachable at <https://monitor.manovaturi.com>.
 
 ## AWS
 

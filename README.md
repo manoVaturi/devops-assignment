@@ -17,8 +17,6 @@ Two projects, each in its own folder with its own README.
 | Job 3: run both containers, Nginx exposed on the Jenkins machine only, send a request and verify it | `docker-monitor/jenkins/Jenkinsfile.integration`, `docker-monitor/docker-compose.yaml` |
 | K8s cluster with my weather app, a 3rd party queue, KEDA scaling the pods by user requests | `weatherapp-keda/` (Terraform EKS, RabbitMQ, KEDA ScaledObjects) |
 
-Extra: a fourth Jenkins job builds the weather app image.
-
 ## Stack
 
 Jenkins (Job DSL, Configuration as Code), Docker, Docker Compose, Flask, Nginx, Trivy,
@@ -35,7 +33,6 @@ docker-monitor/
   infrastructure/   Jenkins image, plugins, CasC, Terraform for EC2
 weatherapp-keda/
   weather-app/      Flask web + queue worker, tests
-  Jenkinsfile       image pipeline
   k8s/              RabbitMQ, app, worker, KEDA ScaledObject (kustomize)
   infrastructure/   Terraform: VPC + EKS
   dns/              Terraform: Route 53 record
